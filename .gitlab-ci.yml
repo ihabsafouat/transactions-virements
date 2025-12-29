@@ -1,0 +1,66 @@
+image: golang:1.21
+
+stages:
+  - build
+  - verify
+
+# --------------------------
+# Job de build
+# --------------------------
+build:
+  stage: build
+  script:
+    - go version
+    - go mod tidy
+    - go build -v ./...
+  artifacts:
+    paths:
+      - go.sum
+  only:
+    - merge_requests
+    - main
+
+# --------------------------
+# Job de tests unitaires avec rapport JUnit
+# --------------------------
+unit_tests:
+  stage: verify
+  script:
+    - go version
+    - go test ./... -coverprofile=coverage.out
+    - go test -v ./... -json > report.json
+    - go install github.com/jstemmer/go-junit-report@latest
+    - export PATH=$PATH:$(go env GOPATH)/bin
+    - go-junit-report < report.json > junit-report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: junit-report.xml
+    paths:
+      - coverage.out
+      - junit-report.xml
+  only:
+    - merge_requests
+    - main
+  needs:
+    - build
+
+# --------------------------
+# Job de linting avec rapport JSON
+# --------------------------
+golangci_lint:
+  image: golangci/golangci-lint:latest
+  stage: verify
+  script:
+    - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+    - export PATH="$PATH:$(go env GOPATH)/bin"
+    - golangci-lint run --out-format json --enable=govet --enable=revive --enable=errcheck --enable=staticcheck --enable=gosimple --enable=ineffassign --enable=unused ./... > lint-report.json || true
+  artifacts:
+    when: always
+    paths:
+      - lint-report.json
+  only:
+    - merge_requests
+    - main
+  needs:
+    - build

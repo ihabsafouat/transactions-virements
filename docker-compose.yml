@@ -1,0 +1,16 @@
+services:
+  virements-service:
+    build:
+      context: .
+      target: builder
+    container_name: virements-service
+    command: ["./virements"]
+    ports:
+      - "8080:8080"
+
+  virements-tests:
+    build:
+      context: .
+      target: builder   # utilise l’image builder avec Go
+    container_name: virements-tests
+    command: ["go", "test", "./..."]
