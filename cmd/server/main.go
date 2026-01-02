@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"gitlab.com/h2c-bd2c/transactions-virements/internal/httpapi"
+	"gitlab.com/h2c-bd2c/transactions-virements/internal/repo"
+	"gitlab.com/h2c-bd2c/transactions-virements/internal/service"
 )
 
 func main() {
@@ -17,9 +19,12 @@ func main() {
 
 	addr := ":" + port
 
+	r := repo.NewMemoryRepo()
+	svc := service.NewVirementService(r)
+
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           httpapi.NewRouter(),
+		Handler:           httpapi.NewRouter(svc),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
