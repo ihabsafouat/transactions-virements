@@ -1,0 +1,58 @@
+image: golang:1.21
+
+stages:
+  - build
+  - verify
+
+before_script:
+  - pwd
+  - ls -la
+  - test -f go.mod || (echo "go.mod not found" && exit 1)
+
+build:
+  stage: build
+  script:
+    - go version
+    - go mod tidy
+    - go build ./...
+  artifacts:
+    paths:
+      - go.sum
+  only:
+    - merge_requests
+    - main
+
+unit_tests:
+  stage: verify
+  script:
+    - go test ./... -coverprofile=coverage.out
+    - go test -v ./... -json > report.json
+    - go install github.com/jstemmer/go-junit-report@latest
+    - go-junit-report < report.json > junit-report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: junit-report.xml
+    paths:
+      - coverage.out
+      - junit-report.xml
+  needs:
+    - build
+  only:
+    - merge_requests
+    - main
+
+golangci_lint:
+  image: golangci/golangci-lint:latest
+  stage: verify
+  script:
+    - golangci-lint run --out-format json ./... > lint-report.json || true
+  artifacts:
+    when: always
+    paths:
+      - lint-report.json
+  needs:
+    - build
+  only:
+    - merge_requests
+    - main
