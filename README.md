@@ -1,3 +1,10 @@
+<<<<<<< README.md
+# Transactions - Virements Service (Go)
+
+## Run locally
+```bash
+# go run ./cmd/server
+=======
 # CI Go Virements - Documentation CI/CD
 
 Ce projet contient un service Go pour gérer des virements bancaires et un pipeline CtLab pour **build, test et linting automatique**.
@@ -127,3 +134,4 @@ POST /api/v1/virements
 
 
 
+>>>>>>> README.md
