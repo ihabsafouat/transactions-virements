@@ -7,17 +7,14 @@ stages:
 before_script:
   - pwd
   - ls -la
-  - test -f go.mod || (echo "❌ go.mod not found" && exit 1)
+  - test -f go.mod || (echo "go.mod not found" && exit 1)
 
-# --------------------------
-# Job de build
-# --------------------------
 build:
   stage: build
   script:
     - go version
     - go mod tidy
-    - go build -v ./...
+    - go build ./...
   artifacts:
     paths:
       - go.sum
@@ -25,9 +22,6 @@ build:
     - merge_requests
     - main
 
-# --------------------------
-# Tests unitaires + couverture
-# --------------------------
 unit_tests:
   stage: verify
   script:
@@ -36,10 +30,23 @@ unit_tests:
     - go install github.com/jstemmer/go-junit-report@latest
     - go-junit-report < report.json > junit-report.xml
   artifacts:
-# --------------------------
-# Linting
+    when: always
+    reports:
+      junit: junit-report.xml
+    paths:
+      - coverage.out
+      - junit-report.xml
+  needs:
+    - build
+  only:
+    - merge_requests
+    - main
+
+golangci_lint:
   image: golangci/golangci-lint:latest
   stage: verify
+  script:
+    - golangci-lint run --out-format json ./... > lint-report.json || true
   artifacts:
     when: always
     paths:
@@ -47,20 +54,5 @@ unit_tests:
   needs:
     - build
   only:
-    - main
     - merge_requests
-  script:
-    - golangci-lint run --out-format json ./... > lint-report.json || true
-golangci_lint:
-# --------------------------
     - main
-
-    - merge_requests
-  only:
-    when: always
-  needs:
-    - build
-      - junit-report.xml
-    reports:
-      - coverage.out
-      junit: junit-report.xml
