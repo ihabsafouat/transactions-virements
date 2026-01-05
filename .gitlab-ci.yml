@@ -4,6 +4,11 @@ stages:
   - build
   - verify
 
+before_script:
+  - pwd
+  - ls -la
+  - test -f go.mod || (echo "❌ go.mod not found" && exit 1)
+
 # --------------------------
 # Job de build
 # --------------------------
@@ -21,46 +26,41 @@ build:
     - main
 
 # --------------------------
-# Job de tests unitaires avec rapport JUnit
+# Tests unitaires + couverture
 # --------------------------
 unit_tests:
   stage: verify
   script:
-    - go version
     - go test ./... -coverprofile=coverage.out
     - go test -v ./... -json > report.json
     - go install github.com/jstemmer/go-junit-report@latest
-    - export PATH=$PATH:$(go env GOPATH)/bin
     - go-junit-report < report.json > junit-report.xml
   artifacts:
-    when: always
-    reports:
-      junit: junit-report.xml
-    paths:
-      - coverage.out
-      - junit-report.xml
-  only:
-    - merge_requests
-    - main
-  needs:
-    - build
-
 # --------------------------
-# Job de linting avec rapport JSON
-# --------------------------
-golangci_lint:
+# Linting
   image: golangci/golangci-lint:latest
   stage: verify
-  script:
-    - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-    - export PATH="$PATH:$(go env GOPATH)/bin"
-    - golangci-lint run --out-format json --enable=govet --enable=revive --enable=errcheck --enable=staticcheck --enable=gosimple --enable=ineffassign --enable=unused ./... > lint-report.json || true
   artifacts:
     when: always
     paths:
       - lint-report.json
-  only:
-    - merge_requests
-    - main
   needs:
     - build
+  only:
+    - main
+    - merge_requests
+  script:
+    - golangci-lint run --out-format json ./... > lint-report.json || true
+golangci_lint:
+# --------------------------
+    - main
+
+    - merge_requests
+  only:
+    when: always
+  needs:
+    - build
+      - junit-report.xml
+    reports:
+      - coverage.out
+      junit: junit-report.xml
